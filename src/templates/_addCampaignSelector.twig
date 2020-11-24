@@ -1,0 +1,17 @@
+{% do view.registerAssetBundle("Gladeye\\CampaignManager\\bundles\\EntryBundle") %}
+{% set isSingle = section.type == 'single' %}
+{% set isDraft = entry.getIsDraft() %}
+{% set isRevision = entry.getIsRevision() %}
+{% set draftId = entry.draftId %}
+{% set settings = {
+    isDraft: isDraft,
+    draftId: draftId,
+    campaign: campaign,
+    campaigns: campaigns,
+    entry: entry,
+    campaignSources: [],
+    draftName: isDraft ? entry.getDraftName() : false
+} %}
+{% js %}
+    window.campaignEditor = new Craft.CampaignManager.Entry({{ settings|json_encode|raw }});
+{% endjs %}

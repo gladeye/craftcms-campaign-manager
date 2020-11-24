@@ -1,0 +1,106 @@
+{% extends "_layouts/cp" %}
+{% do view.registerAssetBundle("Gladeye\\CampaignManager\\bundles\\PreviewBundle") %}
+
+{% set fullPageForm = true %}
+{% set title = "Campaigns"|t('campaign-manager') %}
+{% set redirectUrl = url( 'campaigns') %}
+{% set formActions = [] %}
+{% if campaign.id %}
+    {% set formActions = formActions|push({
+        destructive: true,
+        label: 'Delete {type}'|t('app', {
+            type: campaign.lowerDisplayName()
+        }),
+        action: 'campaign-manager/campaigns/delete-campaign',
+        redirect: (redirectUrl ~ '#')|hash,
+        confirm: 'Are you sure you want to delete this {type}?'|t('app', {
+            type: campaign.lowerDisplayName(),
+        }),
+    }) %}
+{% endif %}
+
+{% import "_includes/forms" as forms %}
+
+
+{% block details %}
+    <div id="settings" class="meta">
+        {{ forms.dateTimeField({
+            status: campaign.getAttributeStatus('publishedAt'),
+            label: "Published Date"|t('campaign-manager'),
+            id: 'publishedAt',
+            name: 'publishedAt',
+            value: (campaign.publishedAt ? campaign.publishedAt : null),
+            errors: campaign.getErrors('publishedAt')
+        }) }}
+    </div>
+
+{% endblock %}
+
+{% block actionButton %}
+    {{ parent() }}
+    {% if campaign.id %}
+        {% if currentUser.can('viewCampaign') %}
+            {% if campaign.isPublished() %}
+
+                <a class="btn primary" href="{{ cpUrl('campaigns/' ~ campaign.id ~ '/content') }}">View Content</a>
+            {% else %}
+                <a class="btn primary" href="{{ cpUrl('campaigns/' ~ campaign.id ~ '/drafts') }}">View Drafts</a>
+            {% endif %}
+        {% endif %}
+        {% if not campaign.isPublished() %}
+            {% if not campaign.isPending() %}
+                {% if currentUser.can('publishCampaign') %}
+                    <button type="button" class="btn primary formsubmit" data-action="campaign-manager/campaigns/publish-campaign">Publish campaign</button>
+                {% endif %}
+            {% endif %}
+            {% if currentUser.can('viewCampaign') %}
+                <button type="button" id="preview-campaign-btn" class="btn primary" >Preview campaign</button>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
+{% endblock %}
+
+{% block content %}
+    <input type="hidden" name="action" value="campaign-manager/campaigns/save-campaign">
+    <input type="hidden" name="pluginHandle" value="campaign-manager">
+    <input type="hidden" name="redirectUrl" value="{{ redirectUrl }}">
+
+    {% if campaign.id %}<input type="hidden" name="campaignId" value="{{ campaign.id }}">{% endif %}
+    {% if campaign.uid %}<input type="hidden" name="uid" value="{{ campaign.uid }}">{% endif %}
+
+    <div id="categorygroup-settings">
+
+        {{ forms.textField({
+            label: "Title"|t('campaign-manager'),
+            id: 'name',
+            class: 'ltr',
+            name: 'name',
+            value: campaign.name,
+            errors: campaign.getErrors('name'),
+            autofocus: true,
+            required: true
+        }) }}
+        {{ forms.textareaField({
+            label: "Description"|t('campaign-manager'),
+            id: 'description',
+            class: 'ltr',
+            name: 'description',
+            value: campaign.description,
+            errors: campaign.getErrors('description'),
+            autofocus: true,
+            required: true
+        }) }}
+
+    </div>
+
+{% endblock %}
+
+{% set settings = {
+    campaignId: campaign.id,
+    open: siteUrl('/')
+} %}
+
+{% js %}
+    window.campaignPreview = new Craft.CampaignManager.CampaignPreview({{ settings|json_encode|raw }});
+{% endjs %}

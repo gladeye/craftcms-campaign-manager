@@ -1,0 +1,87 @@
+{% extends "_layouts/cp" %}
+{% set title = "Campaign Drafts for " ~ campaign.name %}
+
+{% do view.registerAssetBundle('craft\\web\\assets\\admintable\\AdminTableAsset') -%}
+{% do view.registerAssetBundle("Gladeye\\CampaignManager\\bundles\\PreviewBundle") %}
+
+{% do view.registerTranslations('app', [
+    "Name",
+    "Handle",
+    "Manage categories",
+    "No category groups exist yet.",
+]) %}
+
+{% block actionButton %}
+    {{ parent() }}
+    {% if currentUser.can('editCampaign') %}
+        <a class="submit btn edit icon" href="{{ campaign.cpEditUrl }}">Edit Campaign</a>
+    {% endif %}
+    {% if not campaign.isPublished() %}
+        {% if not campaign.isPending() %}
+            {% if currentUser.can('publishCampaign') %}
+                <form method="POST">
+                    <input type="hidden" name="action" value="campaign-manager/campaigns/publish-campaign">
+                    <input type="hidden" name="pluginHandle" value="campaign-manager">
+                    <input type="hidden" name="redirectUrl" value="{{ url( 'campaigns') }}">
+                    {% if campaign.id %}<input type="hidden" name="campaignId" value="{{ campaign.id }}">{% endif %}
+                    {% if campaign.uid %}<input type="hidden" name="uid" value="{{ campaign.uid }}">{% endif %}
+                    {{- csrfInput() }}
+                    <button type="submit" class="btn primary" >Publish campaign</button>
+                </form>
+            {% endif %}
+        {% endif %}
+        <button type="button" id="preview-campaign-btn" class="btn primary" >Preview campaign</button>
+    {% endif %}
+{% endblock %}
+
+
+{% block content %}
+    <div id="categorygroups-vue-admin-table"></div>
+{% endblock %}
+
+{% set tableData = [] %}
+{% for draft in drafts %}
+    {% set tableData = tableData|merge([{
+        id: draft.draft.id,
+        title: draft.entry.title,
+        url: cpUrl(draft.entry.getCpEditUrl(), {draftId: draft.entry.draftId}),
+        name: draft.entry.title,
+        isOutdated: (draft.entry.getIsOutdated() ? 'Yes' : 'No'),
+        previewLink: '<a href="' ~ url('campaigns/' ~ campaign.id ~ '/preview', {draftId: draft.entry.draftId}) ~ '" target="_blank" >Preview</a>'
+    }]) %}
+{% endfor %}
+
+
+{% js %}
+var columns = [
+    {
+        name: '__slot:title',
+        title: Craft.t('app', 'Name'),
+    },
+    {
+        name: 'isOutdated',
+        title: Craft.t('app', 'Is Outdated'),
+    },
+    {
+        name: 'previewLink',
+        title: Craft.t('campaign-manager', 'Preview')
+    }
+];
+
+new Craft.VueAdminTable({
+    columns: columns,
+    container: '#categorygroups-vue-admin-table',
+    deleteAction: 'campaign-manager/campaigns/remove-draft-by-id',
+    emptyMessage: Craft.t('campaign-manager', 'No drafts have been added yet.'),
+    tableData: {{ tableData|json_encode|raw }}
+    });
+{% endjs %}
+
+{% set settings = {
+    campaignId: campaign.id,
+    open: siteUrl('/')
+} %}
+
+{% js %}
+    window.campaignPreview = new Craft.CampaignManager.CampaignPreview({{ settings|json_encode|raw }});
+{% endjs %}

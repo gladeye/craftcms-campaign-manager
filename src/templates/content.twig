@@ -1,0 +1,80 @@
+{% extends "_layouts/cp" %}
+{% set title = "Campaign Content for " ~ campaign.name %}
+
+{% do view.registerAssetBundle('craft\\web\\assets\\admintable\\AdminTableAsset') -%}
+{% do view.registerAssetBundle("Gladeye\\CampaignManager\\bundles\\PreviewBundle") %}
+
+{% do view.registerTranslations('app', [
+    "Name",
+    "Handle",
+    "Manage categories",
+    "No category groups exist yet.",
+]) %}
+
+{% block actionButton %}
+    {{ parent() }}
+    {% if currentUser.can('editCampaign') %}
+        <a class="submit btn edit icon" href="{{ campaign.cpEditUrl }}">Edit Campaign</a>
+    {% endif %}
+    {% if not campaign.isPublished() %}
+        {% if not campaign.isPending() %}
+            {% if currentUser.can('publishCampaign') %}
+                <form method="POST">
+                    <input type="hidden" name="action" value="campaign-manager/campaigns/publish-campaign">
+                    <input type="hidden" name="pluginHandle" value="campaign-manager">
+                    <input type="hidden" name="redirectUrl" value="{{ url( 'campaigns') }}">
+                    {% if campaign.id %}<input type="hidden" name="campaignId" value="{{ campaign.id }}">{% endif %}
+                    {% if campaign.uid %}<input type="hidden" name="uid" value="{{ campaign.uid }}">{% endif %}
+                    {{- csrfInput() }}
+                    <button type="submit" class="btn primary" >Publish campaign</button>
+                </form>
+            {% endif %}
+        {% endif %}
+        <button type="button" id="preview-campaign-btn" class="btn primary" >Preview campaign</button>
+    {% endif %}
+{% endblock %}
+
+
+{% block content %}
+    <div id="categorygroups-vue-admin-table"></div>
+{% endblock %}
+
+{% set tableData = [] %}
+{% for entry in entries %}
+    {% set params = {} %}
+    {% if entry.getIsRevision() %}
+        {% set params = {revisionId: entry.revisionId} %}
+    {% endif %}
+    {% set tableData = tableData|merge([{
+        id: entry.id,
+        title: entry.title,
+        url: cpUrl(entry.getCpEditUrl(), params),
+        name: entry.title,
+        status: entry.getIsRevision() ? 'Previously Live' : 'Currently Live'
+    }]) %}
+{% endfor %}
+
+
+{% js %}
+var columns = [
+    {
+        name: '__slot:title',
+        title: Craft.t('app', 'Name'),
+    },
+    {
+    name: 'status',
+    title: Craft.t('app', 'Status'),
+    }
+];
+
+new Craft.VueAdminTable({
+    columns: columns,
+    container: '#categorygroups-vue-admin-table',
+    emptyMessage: Craft.t('campaign-manager', 'No content is available for this draft.'),
+    tableData: {{ tableData|json_encode|raw }}
+    });
+{% endjs %}
+
+
+
+

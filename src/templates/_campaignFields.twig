@@ -1,0 +1,21 @@
+{% import "_includes/forms" as forms %}
+{{ forms.textField({
+    label: "Title"|t('campaign-manager'),
+    id: 'name',
+    class: 'ltr',
+    name: 'name',
+    value: campaign.name,
+    errors: campaign.getErrors('name'),
+    autofocus: true,
+    required: true
+}) }}
+{{ forms.textareaField({
+    label: "Description"|t('campaign-manager'),
+    id: 'description',
+    class: 'ltr',
+    name: 'description',
+    value: campaign.description,
+    errors: campaign.getErrors('description'),
+    autofocus: true,
+    required: true
+}) }}
